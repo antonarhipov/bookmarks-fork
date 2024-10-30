@@ -1,7 +1,7 @@
 drop table if exists bookmarks;
 drop sequence if exists bookmark_id_seq;
 
-create sequence bookmark_id_seq start with 1 increment by 1;
+create sequence bookmark_id_seq start with 1 increment by 50;
 create table bookmarks
 (
     id         bigint       not null default nextval('bookmark_id_seq'),

@@ -2,6 +2,7 @@ package com.jetbrains.bookmarks
 
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotEmpty
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -14,79 +15,78 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import java.time.Instant
-import java.util.function.Supplier
+
+data class CreateBookmarkPayload(
+    val title: @NotEmpty(message = "Title is required") String,
+    val url: @NotEmpty(message = "Url is required") String
+)
+
+data class UpdateBookmarkPayload(
+    val title: @NotEmpty(message = "Title is required") String,
+    val url: @NotEmpty(message = "Url is required") String
+)
 
 @RestController
 @RequestMapping("/api/bookmarks")
-internal class BookmarkController(private val bookmarkRepository: BookmarkRepository) {
+class BookmarkController(private val bookmarkRepository: BookmarkRepository) {
 
     @GetMapping
     fun bookmarks() = bookmarkRepository.findAllByOrderByCreatedAtDesc()
 
     @GetMapping("/{id}")
-    fun getBookmarkById(@PathVariable id: Long): ResponseEntity<BookmarkInfo> {
-        val bookmark = bookmarkRepository.findBookmarkById(id)
-            ?: throw BookmarkNotFoundException("Bookmark not found")
-
-        return ResponseEntity.ok<BookmarkInfo>(bookmark)
-    }
-
-    @JvmRecord
-    internal data class CreateBookmarkPayload(
-        val title: @NotEmpty(message = "Title is required") String,
-        val url: @NotEmpty(message = "Url is required") String
-    )
+    fun getBookmarkById(@PathVariable id: Long): ResponseEntity<BookmarkInfo> =
+        findBookmarkById(id)?.let { ResponseEntity.ok(it) }
+            ?: throw BookmarkNotFoundException("Bookmark not found with id: $id")
 
     @PostMapping
-    fun createBookmark(
-        @RequestBody payload: @Valid CreateBookmarkPayload
-    ): ResponseEntity<Void> {
-        val bookmark = Bookmark().apply {
+    fun createBookmark(@RequestBody @Valid payload: CreateBookmarkPayload): ResponseEntity<Void> {
+        val savedBookmark = bookmarkRepository.save(Bookmark().apply {
             title = payload.title
             url = payload.url
             createdAt = Instant.now()
-        }
-        val savedBookmark = bookmarkRepository.save<Bookmark>(bookmark)
-        val url = ServletUriComponentsBuilder.fromCurrentRequest()
+        })
+
+        val location = ServletUriComponentsBuilder.fromCurrentRequest()
             .path("/{id}")
-            .build(savedBookmark.id)
+            .buildAndExpand(savedBookmark.id)
+            .toUri()
 
-        return ResponseEntity.created(url).build<Void>()
+        return ResponseEntity.created(location).build()
     }
-
-    @JvmRecord
-    internal data class UpdateBookmarkPayload(
-        val title: @NotEmpty(message = "Title is required") String,
-        val url: @NotEmpty(message = "Url is required") String
-    )
 
     @PutMapping("/{id}")
     fun updateBookmark(
         @PathVariable id: Long,
-        @RequestBody payload: @Valid UpdateBookmarkPayload
+        @RequestBody @Valid payload: UpdateBookmarkPayload
     ): ResponseEntity<Void> {
-        val bookmark =
-            bookmarkRepository.findById(id).orElseThrow { BookmarkNotFoundException("Bookmark not found") }
+        val bookmark = findBookmarkOrThrow(id)
 
-        with(bookmark) {
+        bookmark.apply {
             title = payload.title
             url = payload.url
             updatedAt = Instant.now()
         }
 
         bookmarkRepository.save(bookmark)
-        return ResponseEntity.noContent().build<Void>()
+        return ResponseEntity.noContent().build()
     }
 
     @DeleteMapping("/{id}")
     fun deleteBookmark(@PathVariable id: Long) {
-        val bookmark = bookmarkRepository.findById(id)
-            .orElseThrow<BookmarkNotFoundException?>(Supplier { BookmarkNotFoundException("Bookmark not found") })
+        val bookmark = findBookmarkOrThrow(id)
         bookmarkRepository.delete(bookmark)
     }
 
     @ExceptionHandler(BookmarkNotFoundException::class)
-    fun handle(e: BookmarkNotFoundException?): ResponseEntity<Void?> {
-        return ResponseEntity.notFound().build<Void?>()
-    }
+    fun handleBookmarkNotFound(e: BookmarkNotFoundException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse(e.message))
+
+    private fun findBookmarkById(id: Long): BookmarkInfo? = bookmarkRepository.findBookmarkById(id)
+
+    private fun findBookmarkOrThrow(id: Long): Bookmark =
+        bookmarkRepository.findById(id).orElseThrow {
+            BookmarkNotFoundException("Bookmark not found with id: $id")
+        }
 }
+
+data class ErrorResponse(val message: String?)

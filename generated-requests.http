@@ -32,7 +32,7 @@ Content-Type: application/json
 %}
 
 ### Update bookmark successfully
-PUT http://localhost:8080/api/bookmarks/3
+PUT http://localhost:8080/api/bookmarks/1
 Content-Type: application/json
 
 {
@@ -48,7 +48,7 @@ Content-Type: application/json
 
 
 ### Delete bookmark successfully
-DELETE http://localhost:8080/api/bookmarks/3
+DELETE http://localhost:8080/api/bookmarks/1
 
 > {%
     client.test("Should delete bookmark successfully", function () {
