@@ -16,14 +16,14 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import java.time.Instant
 
-data class CreateBookmarkPayload(
-    val title: @NotEmpty(message = "Title is required") String,
-    val url: @NotEmpty(message = "Url is required") String
+class CreateBookmarkPayload(
+    @field:NotEmpty(message = "Title is required") val title: String,
+    @field:NotEmpty(message = "Url is required") val url: String
 )
 
-data class UpdateBookmarkPayload(
-    val title: @NotEmpty(message = "Title is required") String,
-    val url: @NotEmpty(message = "Url is required") String
+class UpdateBookmarkPayload(
+    @field:NotEmpty(message = "Title is required") val title: String,
+    @field:NotEmpty(message = "Url is required") val url: String
 )
 
 @RestController
