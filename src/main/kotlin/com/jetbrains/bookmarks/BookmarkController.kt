@@ -41,10 +41,11 @@ internal class BookmarkController(private val bookmarkRepository: BookmarkReposi
     fun createBookmark(
         @RequestBody payload: @Valid CreateBookmarkPayload
     ): ResponseEntity<Void> {
-        val bookmark = Bookmark()
-        bookmark.title = payload.title
-        bookmark.url = payload.url
-        bookmark.createdAt = Instant.now()
+        val bookmark = Bookmark().apply {
+            title = payload.title
+            url = payload.url
+            createdAt = Instant.now()
+        }
         val savedBookmark = bookmarkRepository.save<Bookmark>(bookmark)
         val url = ServletUriComponentsBuilder.fromCurrentRequest()
             .path("/{id}")
@@ -67,9 +68,12 @@ internal class BookmarkController(private val bookmarkRepository: BookmarkReposi
         val bookmark =
             bookmarkRepository.findById(id).orElseThrow { BookmarkNotFoundException("Bookmark not found") }
 
-        bookmark.title = payload.title
-        bookmark.url = payload.url
-        bookmark.updatedAt = Instant.now()
+        with(bookmark) {
+            title = payload.title
+            url = payload.url
+            updatedAt = Instant.now()
+        }
+
         bookmarkRepository.save(bookmark)
         return ResponseEntity.noContent().build<Void>()
     }
